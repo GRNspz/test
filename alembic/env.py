@@ -23,6 +23,15 @@ if config.config_file_name is not None:
 target_metadata = get_base().metadata
 
 
+def _fix_driver_in_url(db_url):
+    """Ensure PostgreSQL URLs use psycopg2 driver explicitly for Vercel."""
+    if db_url.startswith("postgresql://"):
+        return db_url.replace("postgresql://", "postgresql+psycopg2://")
+    elif db_url.startswith("postgres://"):
+        return db_url.replace("postgres://", "postgresql+psycopg2://")
+    return db_url
+
+
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
 
@@ -35,7 +44,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = settings.database_url
+    url = _fix_driver_in_url(settings.database_url)
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -55,7 +64,7 @@ def run_migrations_online() -> None:
 
     """
     # Use DATABASE_URL from settings
-    url = settings.database_url
+    url = _fix_driver_in_url(settings.database_url)
     connectable = engine_from_config(
         {"sqlalchemy.url": url},
         prefix="sqlalchemy.",
