@@ -30,6 +30,14 @@ def get_database_url():
 
 def _create_engine(db_url):
     """Create an engine from a database URL."""
+    # For PostgreSQL, ensure we use psycopg2 driver explicitly
+    # This is important for Vercel Serverless where psycopg (pure Python) 
+    # may not work but psycopg2-binary (pre-compiled) does
+    if db_url.startswith("postgresql://"):
+        db_url = db_url.replace("postgresql://", "postgresql+psycopg2://")
+    elif db_url.startswith("postgres://"):
+        db_url = db_url.replace("postgres://", "postgresql+psycopg2://")
+    
     # For SQLite in-memory, we need to handle it differently
     if db_url.startswith("sqlite"):
         return create_engine(
