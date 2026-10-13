@@ -23,3 +23,4 @@
 - Deploy-Ziel ist Vercel (Python-Serverless): Struktur entsprechend
   aufbauen (z. B. api/-Verzeichnis, vercel.json falls nötig), damit
   der Merge auf main ohne Anpassungen deployt.
+- Bei SQLAlchemy mit dem Transaction-Mode-Pooler: prepared statements deaktivieren.
