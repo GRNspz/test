@@ -1,10 +1,19 @@
-from fastapi import FastAPI, Request, Form
+"""FastAPI application with PostgreSQL persistence for greeting names."""
+
+from datetime import datetime
+
+from fastapi import Depends, FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse
-from fastapi.staticfiles import StaticFiles
+from sqlalchemy import desc, select
+from sqlalchemy.orm import Session
+
+from api.database import get_db_session
+from api.models import Greeting
 
 app = FastAPI()
 
-# HTML template mit Formular
+
+# HTML template with form and name history list
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="de">
@@ -50,6 +59,35 @@ HTML_TEMPLATE = """
             min-height: 20px;
             background-color: #f8f9fa;
         }
+        #history {
+            margin-top: 30px;
+            text-align: left;
+        }
+        #history h2 {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        #history ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+        #history li {
+            padding: 8px 12px;
+            border-bottom: 1px solid #eee;
+            background-color: #f9f9f9;
+            margin-bottom: 5px;
+            border-radius: 4px;
+        }
+        #history li:last-child {
+            border-bottom: none;
+        }
+        .timestamp {
+            color: #666;
+            font-size: 0.85em;
+            margin-left: 10px;
+        }
     </style>
 </head>
 <body>
@@ -61,8 +99,35 @@ HTML_TEMPLATE = """
         </form>
     </div>
     <div id="result"></div>
+    <div id="history">
+        <h2>Letzte Begrüßungen:</h2>
+        <ul id="greetingsList"></ul>
+    </div>
 
     <script>
+        // Function to fetch and display greeting history
+        async function loadHistory() {
+            try {
+                const response = await fetch('/api/history');
+                const history = await response.json();
+                const list = document.getElementById('greetingsList');
+                
+                if (history.length === 0) {
+                    list.innerHTML = '<li>Noch keine Begrüßungen</li>';
+                    return;
+                }
+                
+                list.innerHTML = history.map(greeting => 
+                    `<li>${greeting.name} <span class="timestamp">(${new Date(greeting.created_at).toLocaleString('de-DE')})</span></li>`
+                ).join('');
+            } catch (error) {
+                console.error('Error loading history:', error);
+            }
+        }
+
+        // Load history on page load
+        document.addEventListener('DOMContentLoaded', loadHistory);
+
         document.getElementById('nameForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const name = document.getElementById('name').value;
@@ -78,6 +143,10 @@ HTML_TEMPLATE = """
                 
                 const result = await response.text();
                 document.getElementById('result').textContent = result;
+                document.getElementById('name').value = '';
+                
+                // Reload history after successful submission
+                await loadHistory();
             } catch (error) {
                 document.getElementById('result').textContent = 'Fehler: ' + error.message;
             }
@@ -87,10 +156,48 @@ HTML_TEMPLATE = """
 </html>
 """
 
+
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
+    """Serve the main HTML page with form and history."""
     return HTMLResponse(content=HTML_TEMPLATE, status_code=200)
 
+
 @app.post("/api/hello")
-async def hello(name: str = Form(default="")):
+async def hello(
+    name: str = Form(default=""),
+    db: Session = Depends(get_db_session),
+) -> PlainTextResponse:
+    """
+    Handle form submission: store the name and return greeting.
+    
+    Creates a new Greeting record with the submitted name and current timestamp.
+    """
+    # Create and store the greeting
+    greeting = Greeting(name=name)
+    db.add(greeting)
+    db.commit()
+    db.refresh(greeting)
+
     return PlainTextResponse(content=f"Hallo, {name}!")
+
+
+@app.get("/api/history")
+async def get_history(
+    db: Session = Depends(get_db_session),
+) -> list[dict]:
+    """
+    Return the last 10 greetings, ordered by most recent first.
+    
+    Returns a JSON list of greeting objects with name and created_at fields.
+    """
+    result = db.scalars(
+        select(Greeting)
+        .order_by(desc(Greeting.created_at), desc(Greeting.id))
+        .limit(10)
+    ).all()
+
+    return [
+        {"name": g.name, "created_at": g.created_at.isoformat()}
+        for g in result
+    ]
