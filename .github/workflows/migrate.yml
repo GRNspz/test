@@ -6,6 +6,7 @@ on:
 jobs:
   migrate:
     runs-on: ubuntu-latest
+    environment: Production
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
