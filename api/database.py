@@ -1,11 +1,12 @@
 """Database session management and engine configuration."""
 
 import os
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Generator, Optional
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+
 
 # SQLAlchemy base class for models
 class Base(DeclarativeBase):
@@ -13,7 +14,7 @@ class Base(DeclarativeBase):
 
 
 # Global engine - created once and reused
-_engine: Optional[object] = None
+_engine: object | None = None
 
 
 def get_database_url():
@@ -22,22 +23,23 @@ def get_database_url():
     db_url = os.environ.get("DATABASE_URL")
     if db_url:
         return db_url
-    
+
     # Fall back to settings
     from api.config import settings
+
     return settings.database_url
 
 
 def _create_engine(db_url):
     """Create an engine from a database URL."""
     # For PostgreSQL, ensure we use psycopg2 driver explicitly
-    # This is important for Vercel Serverless where psycopg (pure Python) 
+    # This is important for Vercel Serverless where psycopg (pure Python)
     # may not work but psycopg2-binary (pre-compiled) does
     if db_url.startswith("postgresql://"):
         db_url = db_url.replace("postgresql://", "postgresql+psycopg2://")
     elif db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql+psycopg2://")
-    
+
     # For SQLite in-memory, we need to handle it differently
     if db_url.startswith("sqlite"):
         return create_engine(

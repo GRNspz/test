@@ -1,14 +1,15 @@
 """FastAPI application with PostgreSQL persistence for greeting names."""
 
-from datetime import datetime
-
-from fastapi import Depends, FastAPI, Form, Request
+from fastapi import Depends, FastAPI, Form
 from fastapi.responses import HTMLResponse, PlainTextResponse
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
 
 from api.database import get_db_session
 from api.models import Greeting
+
+# Create a module-level dependency for the database session
+db_dependency = Depends(get_db_session)
 
 app = FastAPI()
 
@@ -166,11 +167,11 @@ async def read_root():
 @app.post("/api/hello")
 async def hello(
     name: str = Form(default=""),
-    db: Session = Depends(get_db_session),
+    db: Session = db_dependency,
 ) -> PlainTextResponse:
     """
     Handle form submission: store the name and return greeting.
-    
+
     Creates a new Greeting record with the submitted name and current timestamp.
     """
     # Create and store the greeting
@@ -184,20 +185,15 @@ async def hello(
 
 @app.get("/api/history")
 async def get_history(
-    db: Session = Depends(get_db_session),
+    db: Session = db_dependency,
 ) -> list[dict]:
     """
     Return the last 10 greetings, ordered by most recent first.
-    
+
     Returns a JSON list of greeting objects with name and created_at fields.
     """
     result = db.scalars(
-        select(Greeting)
-        .order_by(desc(Greeting.created_at), desc(Greeting.id))
-        .limit(10)
+        select(Greeting).order_by(desc(Greeting.created_at), desc(Greeting.id)).limit(10)
     ).all()
 
-    return [
-        {"name": g.name, "created_at": g.created_at.isoformat()}
-        for g in result
-    ]
+    return [{"name": g.name, "created_at": g.created_at.isoformat()} for g in result]
