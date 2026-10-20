@@ -120,7 +120,7 @@ uv run alembic downgrade <revision_id>
 - **Prepared Statements müssen deaktiviert sein** für PostgreSQL mit Pooler
 - Dies ist in `api/database.py` bereits konfiguriert:
   ```python
-  connect_args={"application_name": "hello-web-app"}
+  connect_args = {"application_name": "hello-web-app"}
   ```
 - Die Connection-String sollte so aussehen:
   `postgresql://user:password@aws-1-region.pooler.supabase.com:5432/postgres`

@@ -17,6 +17,12 @@
 - Jeder Commit endet (nach einer Leerzeile) mit:
   Co-authored-by: Vibe Agent <devstral@noreply.mistral.ai>
 
+## Code-Qualität (ruff)
+- Vor jedem Commit: `uv run ruff check .` und `uv run ruff format .` – 
+  nur committen, wenn beide sauber durchlaufen und die Tests grün sind.
+- Keine `# noqa`-Kommentare ohne schriftliche Begründung im selben Commit.
+-Lint-Fehler werden behoben, nicht unterdrückt.
+
 ## Geheimnisse & Deployment
 - Niemals .env-Dateien, Keys oder Credentials committen 
   (dieses Repo ist öffentlich!).

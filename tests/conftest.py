@@ -14,7 +14,7 @@ from api.models import Greeting  # noqa: F401
 @pytest.fixture(scope="function")
 def test_db():
     """Create an in-memory SQLite database for testing.
-    
+
     Using file:test.db?mode=memory&cache=shared to ensure all connections
     share the same in-memory database.
     """
@@ -24,22 +24,23 @@ def test_db():
         connect_args={"check_same_thread": False},
     )
     Base.metadata.create_all(bind=engine)
-    
+
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-    
+
     def get_test_db():
         db = SessionLocal()
         try:
             yield db
         finally:
             db.close()
-    
+
     # Override the app's database dependency
     from api.database import get_db_session
+
     app.dependency_overrides[get_db_session] = get_test_db
-    
+
     yield {"engine": engine, "SessionLocal": SessionLocal}
-    
+
     # Cleanup
     app.dependency_overrides.clear()
     Base.metadata.drop_all(bind=engine)
@@ -50,4 +51,5 @@ def test_db():
 def client(test_db):
     """Create a test client with the test database."""
     from fastapi.testclient import TestClient
+
     return TestClient(app)
